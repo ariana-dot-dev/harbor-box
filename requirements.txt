@@ -1,0 +1,4 @@
+# Runtime dependencies for the BoxEnvironment adapter.
+harbor>=0.14.0
+httpx
+tenacity

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "harbor-box"
+version = "0.1.0"
+description = "Harbor environment adapter backed by the Ascii Box public API"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Harbor" }]
+keywords = ["harbor", "ascii-box", "ai-agents", "sandbox"]
+dependencies = [
+  "harbor>=0.14.0",
+  "httpx",
+  "tenacity",
+]
+classifiers = [
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Developers",
+]
+
+[project.urls]
+Homepage = "https://github.com/ariana-dot-dev/harbor-box"
+Repository = "https://github.com/ariana-dot-dev/harbor-box"
+Issues = "https://github.com/ariana-dot-dev/harbor-box/issues"
+
+# The distributable is the single adapter module `harbor_box_environment`,
+# which lives under sdks/. The evals (sdks/harbor-box-evals) are examples and
+# are intentionally not packaged.
+[tool.setuptools]
+py-modules = ["harbor_box_environment"]
+
+[tool.setuptools.package-dir]
+"" = "sdks"

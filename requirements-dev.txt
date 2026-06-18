@@ -1,0 +1,5 @@
+# Dev/test dependencies (includes runtime deps).
+-r requirements.txt
+pytest
+pytest-asyncio
+python-dotenv

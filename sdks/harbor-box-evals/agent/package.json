@@ -1,0 +1,12 @@
+{
+  "name": "harbor-box-claude-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "From-scratch coding agent built on the Claude Agent SDK, deployed by Harbor into an Ascii Box.",
+  "bin": { "harbor-box-agent": "agent.mjs" },
+  "scripts": { "start": "node agent.mjs" },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.179"
+  }
+}

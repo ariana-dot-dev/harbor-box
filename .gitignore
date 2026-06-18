@@ -1,0 +1,25 @@
+# Secrets / local env — NEVER commit real keys
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Build artifacts (PyPI)
+dist/
+build/
+
+# Node
+node_modules/
+
+# Agent run artifacts
+agent-trajectory.jsonl
+
+# Local WSL dev helper scripts
+.wsl-*.sh
