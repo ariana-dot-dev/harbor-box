@@ -78,8 +78,8 @@ runnable example is in
 
 ## Cleanup & billing
 
-Harbor stops a trial's box as soon as the trial finishes — including when it
-errors — so a box only costs you while a trial is actually running. By default
+Harbor stops the box as soon as a trial (one eval run) finishes — including when
+it errors — so a box only costs you while a trial is actually running. By default
 `stop()` removes the box (`delete=True`, matching Harbor); pass `delete=False` to
 keep a resumable snapshot instead. Either way compute billing stops. The
 `ttl_seconds` you set is just a safety backstop for an abandoned box.

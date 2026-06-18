@@ -39,7 +39,7 @@ from harbor.models.task.config import EnvironmentConfig, NetworkMode
 from harbor.models.trial.paths import TrialPaths
 
 _DEFAULT_BASE_URL = "https://ascii.dev/api/box/v1"
-_DEFAULT_TIMEOUT_SECONDS = 30.0
+_DEFAULT_TIMEOUT_SECONDS = 60.0
 _DEFAULT_BOX_TTL_SECONDS = 86_400
 # Box-internal names the create API rejects with `invalid_env`; filtered out of
 # any per-box env the adapter forwards so a stray task var can't fail start().
@@ -172,7 +172,10 @@ class AsyncBoxClient:
             "cwd": cwd,
             "timeoutSeconds": timeout_seconds,
         }
-        payload = await self._request("POST", f"/boxes/{box_id}/commands", json=body)
+        # The HTTP read must outlast the in-box command, or a long command (apt/pip
+        # install, a slow test) trips httpx's read timeout before the box replies.
+        http_timeout = self._timeout_seconds if timeout_seconds is None else float(timeout_seconds) + 30.0
+        payload = await self._request("POST", f"/boxes/{box_id}/commands", json=body, timeout=http_timeout)
         result = payload.get("result") if isinstance(payload.get("result"), dict) else payload
         return ExecResult(
             stdout=result.get("stdout", ""),
