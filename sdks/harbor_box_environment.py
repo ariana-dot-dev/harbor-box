@@ -147,6 +147,14 @@ class AsyncBoxClient:
         payload = await self._request("POST", f"/boxes/{box_id}/stop")
         return payload.get("box") or {"id": box_id, "ok": payload.get("ok", True)}
 
+    async def delete(self, box_id: str) -> dict[str, Any]:
+        payload = await self._request("DELETE", f"/boxes/{box_id}")
+        return payload.get("box") or {"id": box_id, "ok": payload.get("ok", True)}
+
+    async def limits(self) -> dict[str, Any]:
+        """Account limits/billing: activeBoxes, maxActiveBoxes, canStart, billingStatus, creditBalanceSeconds."""
+        return await self._request("GET", "/limits")
+
     async def command(
         self,
         box_id: str,
@@ -440,15 +448,26 @@ class BoxEnvironment(BaseEnvironment):
             await self._upload_environment_dir_after_start()
 
     @retry(retry=retry_if_exception_type(_TRANSIENT_HTTPX_ERRORS), stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=10), reraise=True)
-    async def _stop_box(self) -> None:
+    async def _archive_box(self) -> None:
         await self._client.stop(self.box_id)
+
+    @retry(retry=retry_if_exception_type(_TRANSIENT_HTTPX_ERRORS), stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=10), reraise=True)
+    async def _delete_box(self) -> None:
+        await self._client.delete(self.box_id)
 
     @override
     async def stop(self, delete: bool = True) -> None:
+        # Both paths take the box out of Box's "active" states, which is what stops
+        # compute billing. Harbor's environment.delete defaults to True, so a trial's
+        # box is removed when it finishes; pass delete=False to archive (snapshot) it
+        # instead for later resume/fork.
         if not self._box_id:
             return
         try:
-            await self._stop_box()
+            if delete:
+                await self._delete_box()   # DELETE: permanent removal, frees the active-box slot
+            else:
+                await self._archive_box()  # POST /stop: archive + snapshot, resumable
         finally:
             self._box = None
             self._box_id = None

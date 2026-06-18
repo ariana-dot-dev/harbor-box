@@ -71,6 +71,19 @@ task_env_config = EnvironmentConfig(
 )
 ```
 
+**Have a Dockerfile?** Reproduce its `RUN` / `COPY` / `WORKDIR` steps on Box as a
+runtime setup (outbound network works, so apt/pip/npm installs run). A complete,
+runnable example is in
+[`examples/dockerfile_to_box.py`](examples/dockerfile_to_box.py).
+
+## Cleanup & billing
+
+Harbor stops a trial's box as soon as the trial finishes — including when it
+errors — so a box only costs you while a trial is actually running. By default
+`stop()` removes the box (`delete=True`, matching Harbor); pass `delete=False` to
+keep a resumable snapshot instead. Either way compute billing stops. The
+`ttl_seconds` you set is just a safety backstop for an abandoned box.
+
 ## Isolation
 
 Boxes are **no-env by default**: a trial gets none of your Box account's secrets,

@@ -29,6 +29,7 @@ from harbor.models.trial.paths import TrialPaths
 
 from harbor_box_environment import (
     AsyncBoxClient,
+    BoxApiError,
     BoxEnvironment,
     _RESERVED_BOX_ENV,
     _parse_dockerfile_workdir,
@@ -258,3 +259,89 @@ async def test_no_env_withholds_account_environment(tmp_path):
         pytest.skip("account injects no extra environment to differentiate no-env from full-env")
     # The no-env box must not carry the account-injected variables a full-env box has.
     assert account_only and account_only.isdisjoint(isolated)
+
+
+# Setup steps that replicate a Dockerfile's RUN lines at runtime. Shared with the
+# examples/dockerfile_to_box.py guide so the doc and the test never drift.
+DOCKERFILE_MIGRATION_SETUP = (
+    "apt-get update -qq && apt-get install -y -qq cowsay",  # RUN apt-get install -y cowsay
+    "pip3 install --break-system-packages -q pyfiglet",     # RUN pip install pyfiglet (PEP 668: --break-system-packages)
+)
+
+_RENDER_PY = (
+    "import subprocess\n"
+    "import pyfiglet  # pip-installed at runtime; not in the base image\n"
+    "banner = pyfiglet.figlet_format('Box')\n"
+    "cow = subprocess.run(['/usr/games/cowsay', 'hello from box'],\n"
+    "                     capture_output=True, text=True).stdout  # apt-installed at runtime\n"
+    "print(banner)\nprint(cow)\nprint('RENDER_OK')\n"
+)
+
+
+@pytest.mark.real_box
+@_requires_box
+async def test_dockerfile_migration(tmp_path):
+    """A task that would have needed a Dockerfile (FROM + RUN apt/pip + COPY) runs on
+    Box by replicating the build at runtime: files ride in the environment directory,
+    and the RUN steps become a one-time root setup command. Proves the migration path
+    documented in examples/dockerfile_to_box.py, end to end, against a live Box."""
+    env = _make(
+        tmp_path,
+        EnvironmentConfig(workdir="/workspace"),
+        files={"render.py": _RENDER_PY},  # COPY render.py /workspace/  (uploaded at start)
+        ttl_seconds=600,
+    )
+    env.default_user = "user"
+    await env.start(force_build=False)
+    try:
+        # The deps are NOT in the base image, so the runtime install really does the work.
+        assert (await env.exec("python3 -c 'import pyfiglet'")).return_code != 0
+        assert (await env.exec("test -x /usr/games/cowsay")).return_code != 0
+
+        # Replicate the Dockerfile's RUN lines as a one-time root setup.
+        for cmd in DOCKERFILE_MIGRATION_SETUP:
+            r = await env.exec(cmd, user="root", timeout_sec=300)
+            assert r.return_code == 0, f"setup failed: {cmd}\n{r.stderr or r.stdout}"
+
+        # The task now runs against the prepared box (render.py came from the env dir).
+        out = await env.exec("python3 render.py", timeout_sec=120)
+        assert out.return_code == 0, out.stderr or out.stdout
+        assert "RENDER_OK" in out.stdout and "hello from box" in out.stdout
+    finally:
+        await env.stop(delete=True)
+
+
+# Box "active" (billing) states are exactly provisioned/cloning/ready/idle/running;
+# a box that is 404 (deleted) or archived is, by definition, no longer billing. Harbor
+# calls env.stop(delete=...) in a finally when a trial ends, so this is what pauses cost.
+@pytest.mark.real_box
+@_requires_box
+async def test_stop_delete_removes_box(tmp_path):
+    client = AsyncBoxClient()
+    env = _make(tmp_path, EnvironmentConfig(workdir="/workspace"), ttl_seconds=600)
+    env.default_user = "user"
+    await env.start(force_build=False)
+    box_id = env.box_id
+    await env.stop(delete=True)  # Harbor's default: permanent removal
+    with pytest.raises(BoxApiError) as ei:
+        await client.get(box_id)
+    assert ei.value.status_code == 404  # gone -> not in any active/billing state
+
+
+@pytest.mark.real_box
+@_requires_box
+async def test_stop_archive_keeps_snapshot_and_stops_billing(tmp_path):
+    client = AsyncBoxClient()
+    env = _make(tmp_path, EnvironmentConfig(workdir="/workspace"), ttl_seconds=600)
+    env.default_user = "user"
+    await env.start(force_build=False)
+    box_id = env.box_id
+    try:
+        await env.stop(delete=False)  # archive (snapshot, resumable)
+        state = (await client.get(box_id))["state"]
+        assert state in ("archiving", "archived")  # left active states -> compute/billing stopped
+    finally:
+        try:
+            await client.delete(box_id)  # don't leave an archived box behind
+        except Exception:
+            pass
