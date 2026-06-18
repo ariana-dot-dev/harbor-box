@@ -21,21 +21,21 @@ agent/prompt endpoint is never used.
 sequenceDiagram
     participant E as Eval (Harbor loop)
     participant Env as BoxEnvironment (adapter)
-    participant Box as Ascii Box
+    participant B as Ascii Box
     participant Ag as agent.mjs (Claude Agent SDK)
     participant LLM as Anthropic API
 
     E->>Env: start()
-    Env->>Box: create + wait ready, upload workdir
+    Env->>B: create + wait ready, upload workdir
     E->>Ag: setup() — upload agent.mjs, npm install (in Box)
     E->>Ag: run(instruction)
-    Ag->>Box: node agent.mjs (inside the Box)
+    Ag->>B: node agent.mjs (inside the Box)
     loop agent turns
         Ag->>LLM: messages + tool results
         LLM-->>Ag: next tool use (Bash/Edit/Write/...)
-        Ag->>Box: execute tool on Box filesystem
+        Ag->>B: execute tool on Box filesystem
     end
-    E->>Box: verify (run check command)
+    E->>B: verify (run check command)
     E->>Env: stop()
 ```
 
