@@ -2,23 +2,25 @@
 
 [![CI](https://github.com/ariana-dot-dev/harbor-box/actions/workflows/ci.yml/badge.svg)](https://github.com/ariana-dot-dev/harbor-box/actions/workflows/ci.yml)
 
+Box is now Boat (boat.dev). Package names are unchanged.
+
 A [Harbor](https://pypi.org/project/harbor/) environment adapter backed by the
-**[Ascii Box](https://box.ascii.dev)** public API.
+**[Boat](https://boat.dev)** public API.
 
-`BoxEnvironment` runs Harbor agent trials and evals inside an Ascii Box instead
+`BoxEnvironment` runs Harbor agent trials and evals inside a Boat sandbox instead
 of a local Docker container, E2B, or Modal. It implements Harbor's
-`BaseEnvironment` surface — lifecycle, command execution, environment variables,
-and file/dir upload + download — on top of Box's public HTTP API.
+`BaseEnvironment` surface (lifecycle, command execution, environment variables,
+and file/dir upload + download) on top of Boat's public HTTP API.
 
-Some Harbor features aren't available on Box today: network policies, Docker
+Some Harbor features aren't available on Boat today: network policies, Docker
 image builds / Compose, and GPUs / TPUs / Windows.
 
 ## Layout
 
 | Path | What |
 | --- | --- |
-| `sdks/harbor_box_environment.py` | `BoxEnvironment` — the Harbor adapter plus a small async Box API client |
-| `sdks/harbor-box-evals/` | End-to-end evals: a from-scratch Claude Agent SDK coding agent solving tasks inside a Box |
+| `sdks/harbor_box_environment.py` | `BoxEnvironment`: the Harbor adapter plus a small async Boat API client |
+| `sdks/harbor-box-evals/` | End-to-end evals: a from-scratch Claude Agent SDK coding agent solving tasks inside a sandbox |
 
 ## Install
 
@@ -39,7 +41,7 @@ cp .env.example .env
 # fill in BOX_API_KEY
 ```
 
-`BOX_API_KEY` is required — get one at <https://box.ascii.dev>. Your `.env` is
+`BOX_API_KEY` is required. Get one at <https://boat.dev>. Your `.env` is
 gitignored; never commit secrets.
 
 ## Use it with Harbor
@@ -52,17 +54,17 @@ harbor task run path/to/task.yaml \
 
 ## Preparing the environment
 
-Box runs a ready Ubuntu image — it doesn't build Docker images. The adapter
-prepares each box from your Harbor environment directory instead:
+Boat runs a ready Ubuntu image; it doesn't build Docker images. The adapter
+prepares each sandbox from your Harbor environment directory instead:
 
-- **Files** in the environment directory are uploaded into the box's working
+- **Files** in the environment directory are uploaded into the sandbox's working
   directory at start, so fixtures, configs, and scripts are in place before the
   agent runs.
 - The **`Dockerfile`** is read only for its `WORKDIR`; build steps
   (`RUN` / `COPY` / …) are not executed. Install dependencies from a setup
   command (`await env.exec(...)`) or your agent, not the image.
 - **Environment variables** come from the Harbor environment config and are
-  forwarded into the box; per-command env is passed through `exec`.
+  forwarded into the sandbox; per-command env is passed through `exec`.
 
 ```python
 task_env_config = EnvironmentConfig(
@@ -71,26 +73,26 @@ task_env_config = EnvironmentConfig(
 )
 ```
 
-**Have a Dockerfile?** Reproduce its `RUN` / `COPY` / `WORKDIR` steps on Box as a
+**Have a Dockerfile?** Reproduce its `RUN` / `COPY` / `WORKDIR` steps on Boat as a
 runtime setup (outbound network works, so apt/pip/npm installs run). A complete,
 runnable example is in
 [`examples/dockerfile_to_box.py`](examples/dockerfile_to_box.py).
 
 ## Cleanup & billing
 
-Harbor stops the box as soon as a trial (one eval run) finishes — including when
-it errors — so a box only costs you while a trial is actually running. By default
-`stop()` removes the box (`delete=True`, matching Harbor); pass `delete=False` to
+Harbor stops the sandbox as soon as a trial (one eval run) finishes, including when
+it errors, so a sandbox only costs you while a trial is actually running. By default
+`stop()` removes the sandbox (`delete=True`, matching Harbor); pass `delete=False` to
 keep a resumable snapshot instead. Either way compute billing stops. The
-`ttl_seconds` you set is just a safety backstop for an abandoned box.
+`ttl_seconds` you set is just a safety backstop for an abandoned sandbox.
 
 ## Isolation
 
-Boxes are **no-env by default**: a trial gets none of your Box account's secrets,
-credentials, or cloned repos and can't act on your account or other boxes. Pass
+Sandboxes are **no-env by default**: a trial gets none of your Boat account's secrets,
+credentials, or cloned repos and can't act on your account or other sandboxes. Pass
 `no_env=False` to use your account's environment instead, configured in the
-[Box dashboard](https://box.ascii.dev/box/dashboard). See
-[Secrets & Setup](https://docs.ascii.dev/box/secrets).
+[Boat dashboard](https://boat.dev/dashboard). See
+[Secrets & Setup](https://docs.boat.dev/secrets).
 
 ## Verify the adapter
 
@@ -108,12 +110,12 @@ CI runs this self-test on every push.
 ## Evals
 
 A from-scratch [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript)
-coding agent solving tasks inside a Box, scored by inspecting the result. See
+coding agent solving tasks inside a Boat sandbox, scored by inspecting the result. See
 [`sdks/harbor-box-evals/README.md`](sdks/harbor-box-evals/README.md).
 
 ## Releasing
 
-Maintainers publish `harbor-box` to PyPI from a local checkout — see
+Maintainers publish `harbor-box` to PyPI from a local checkout. See
 [`docs/release.md`](docs/release.md). CI never publishes.
 
 ## License
