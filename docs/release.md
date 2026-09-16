@@ -11,7 +11,7 @@ CI unless release automation is added later.
 ## What CI does (and does not)
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
-imports the adapter, checks test collection, and runs the **real Box adapter
+imports the adapter, checks test collection, and runs the **real Boat adapter
 e2e self-test** using the `BOX_API_KEY` repo secret (it self-skips on fork PRs
 where the secret is unavailable). CI **does not** publish to PyPI and does not
 run the Claude-agent evals (those cost Anthropic tokens; run them locally).
@@ -29,9 +29,9 @@ git pull --ff-only origin main
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt build twine
 
-# 3. Run the real Box adapter e2e self-test (correctness gate).
-# Use a real key from the Ascii Box dashboard. Keep it in a gitignored .env or
-# your shell only — never commit it.
+# 3. Run the real Boat adapter e2e self-test (correctness gate).
+# Use a real key from the Boat dashboard. Keep it in a gitignored .env or
+# your shell only, never commit it.
 export BOX_API_KEY=box_your_real_key_here
 python sdks/harbor_box_environment.py
 # -> Box Harbor adapter e2e self-test PASSED
@@ -71,7 +71,7 @@ gh release create vX.Y.Z --title vX.Y.Z --notes "..."
   working.
 - Bump `version` in `pyproject.toml` before every publish; PyPI rejects
   re-uploading an existing version. Keep it in sync with the GitHub release tag.
-- The only correctness gate is the real Box self-test (step 3) and, optionally,
+- The only correctness gate is the real Boat self-test (step 3) and, optionally,
   the evals (step 4). `twine check` and a TestPyPI upload are packaging checks,
   not correctness evidence.
 - Never commit a real `BOX_API_KEY` / `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN`.
